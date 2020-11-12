@@ -54,17 +54,13 @@ def exist_dataset_table(client, table_id, dataset_id, project_id, schema, cluste
         dataset = client.create_dataset(dataset)  # Make an API request.
         logger.info("Created dataset {}.{}".format(client.project, dataset.dataset_id))
 
-    # try:
     table_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
-    # DELETE TABLE IF EXISTS
-    client.delete_table(table_ref, not_found_ok=True)
-    logger.info("Reset table state {}".format(table_ref))
-
-    # client.get_table(table_ref)  # Make an API request.
-    #
-    # except NotFound:
-    #
-    table_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
+    try:
+        # DELETE TABLE IF EXISTS
+        client.delete_table(table_ref, not_found_ok=True)
+        logger.info("Reset table state {}".format(table_ref))
+    except:
+        logger.info("Reseting table went wrong {}".format(table_ref))
 
     table = bigquery.Table(table_ref, schema=schema)
 
@@ -164,6 +160,7 @@ def get_facebook_data(event, context):
         account_id = event['attributes']['account_id']
         start_date = datetime.strptime(event['attributes']['start_date'], '%Y-%m-%d')
 
+
         try:
             FacebookAdsApi.init(app_id, app_secret, access_token)
 
@@ -195,8 +192,7 @@ def get_facebook_data(event, context):
             raise
 
         fb_source = []
-        exist_dataset_table(bigquery_client, table_id, dataset_id, project_id, schema_facebook_stat,
-                            clustering_fields_facebook)
+
         for index, item in enumerate(insights):
 
             actions = []
@@ -224,8 +220,8 @@ def get_facebook_data(event, context):
                               'actions': actions
                               })
 
-        # if exist_dataset_table(bigquery_client, table_id, dataset_id, project_id, schema_facebook_stat,
-        #                        clustering_fields_facebook) == 'ok':
-        insert_rows_bq(bigquery_client, table_id, dataset_id, project_id, fb_source)
+        if exist_dataset_table(bigquery_client, table_id, dataset_id, project_id, schema_facebook_stat,
+                               clustering_fields_facebook) == 'ok':
+            insert_rows_bq(bigquery_client, table_id, dataset_id, project_id, fb_source)
 
-        return 'ok'
+            return 'ok'
