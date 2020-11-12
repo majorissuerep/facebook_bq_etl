@@ -64,7 +64,7 @@ def exist_dataset_table(client, table_id, dataset_id, project_id, schema, cluste
     #
     # except NotFound:
     #
-    #     table_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
+    table_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
 
     table = bigquery.Table(table_ref, schema=schema)
 
@@ -164,7 +164,6 @@ def get_facebook_data(event, context):
         account_id = event['attributes']['account_id']
         start_date = datetime.strptime(event['attributes']['start_date'], '%Y-%m-%d')
 
-
         try:
             FacebookAdsApi.init(app_id, app_secret, access_token)
 
@@ -196,7 +195,8 @@ def get_facebook_data(event, context):
             raise
 
         fb_source = []
-
+        exist_dataset_table(bigquery_client, table_id, dataset_id, project_id, schema_facebook_stat,
+                            clustering_fields_facebook)
         for index, item in enumerate(insights):
 
             actions = []
