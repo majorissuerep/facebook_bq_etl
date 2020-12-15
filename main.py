@@ -260,7 +260,7 @@ def long_read_facebook_api(app_id, app_secret, access_token, account_id, **kwarg
 def get_facebook_data(event, context):
     bigquery_client = bigquery.Client()
 
-    end_date = (date.today() - timedelta(1))
+    end_date = datetime.combine(date.today() - timedelta(1), datetime.min.time())
     if 'end_date' in event['attributes']:
         end_date = datetime.strptime(event['attributes']['end_date'], '%Y-%m-%d')
 
@@ -280,7 +280,7 @@ def get_facebook_data(event, context):
         fill_up = True
 
     if (start_date - end_date).days > short_interval_duration:
-        long_term_table_id = table_id + '_long'
+        long_term_table_id = table_id + '_historical'
         long_term_table_end_date = end_date-timedelta(short_interval_duration)
         if fill_up:
             # FILL UP ALL THE TABLE
@@ -305,7 +305,7 @@ def get_facebook_data(event, context):
             insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
         # after everything done here, we can rewrite start_date
         start_date = end_date-timedelta(short_interval_duration)
-    short_term_table_id = table_id+'_short'
+    short_term_table_id = table_id+'_30days'
     # Fast google BQ api operations first!!!
     check_or_create_dataset(bigquery_client, project_id, dataset_id)
     delete_existing_table(bigquery_client, project_id, dataset_id, short_term_table_id)
