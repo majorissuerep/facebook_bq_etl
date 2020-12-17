@@ -246,4 +246,16 @@ def get_facebook_data(event, context):
         insert_rows_bq_obj(bigquery_client, table_obj, writable_insights)
     else:
         insert_rows_bq(bigquery_client, short_term_table_id, dataset_id, project_id, writable_insights)
-    return 'ok'
+
+
+    # CREATING VIEW
+    view_query = """
+    SELECT * FROM {}
+    UNION ALL
+    SELECT * FROM {}
+    """
+    view = bigquery.Table(table_id)
+    view.view_query = view_query.format(long_term_table_id, short_term_table_id)
+    view = bigquery_client.create_table(view)
+    logger.info('view table created!')
+
