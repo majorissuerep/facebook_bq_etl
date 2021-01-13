@@ -11,12 +11,6 @@ short_interval_duration = 30
 
 logger = logging.getLogger()
 
-schema_exchange_rate = [
-    bigquery.SchemaField("date", "DATE", mode="REQUIRED"),
-    bigquery.SchemaField("currencies", "STRING", mode="REQUIRED"),
-    bigquery.SchemaField("rate", "FLOAT", mode="REQUIRED")
-]
-
 schema_facebook_stat = [
     bigquery.SchemaField("date", "DATE", mode="REQUIRED"),
     bigquery.SchemaField("ad_id", "STRING", mode="REQUIRED"),
@@ -125,7 +119,6 @@ def transform_insights(insights):
         if 'conversions' in item:
             for i, value in enumerate(item['conversions']):
                 conversions.append({'action_type': value['action_type'], 'value': value['value']})
-
         fb_source.append({'date': item['date_start'],
                           'ad_id': item['ad_id'],
                           'ad_name': item['ad_name'],
@@ -174,11 +167,11 @@ def long_read_facebook_api(app_id, app_secret, access_token, account_id, **kwarg
     while iter_date + timedelta(short_interval_duration) < end_date:
         insights = read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
                                      until=(iter_date + timedelta(short_interval_duration)))
-        all_insights += insights
+        all_insights += transform_insights(insights)
         iter_date = iter_date + timedelta(short_interval_duration)
     if iter_date < end_date:
-        all_insights += read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
-                                          until=end_date)
+        all_insights += transform_insights(read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
+                                          until=end_date))
     return all_insights
 
 
@@ -213,12 +206,12 @@ def get_facebook_data(event, context):
     long_term_table_ref = view_ref + '_historical'
     short_term_table_ref = view_ref + '_{}days'.format(short_interval_duration)
 
-    if end_date > start_date:
+    if end_date < start_date:
         temp = end_date
         end_date = start_date
         start_date = temp
 
-    if (start_date - end_date).days > short_interval_duration:
+    if (end_date - start_date).days > short_interval_duration:
         long_term_table_id = long_term_table_ref.split('.')[-1]
         long_term_table_end_date = end_date - timedelta(short_interval_duration)
         if not check_table_existance(bigquery_client, project_id, dataset_id, long_term_table_id):
@@ -227,9 +220,9 @@ def get_facebook_data(event, context):
             delete_existing_table(bigquery_client, project_id, dataset_id, long_term_table_id)
             table_obj = create_table(bigquery_client, project_id, dataset_id, long_term_table_id, schema_facebook_stat,
                                      clustering_fields_facebook)
-            insights = long_read_facebook_api(app_id, app_secret, access_token, account_id, since=start_date,
+            writable_insights = long_read_facebook_api(app_id, app_secret, access_token, account_id, since=start_date,
                                               until=long_term_table_end_date)
-            writable_insights = transform_insights(insights)
+            # writable_insights = transform_insights(insights)
             if table_obj:
                 insert_rows_bq_obj(bigquery_client, table_obj, writable_insights)
             else:
