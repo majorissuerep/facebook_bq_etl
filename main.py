@@ -146,10 +146,11 @@ def insert_rows_bq(client, table_id, dataset_id, project_id, data):
     try:
         table_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
         table_obj = client.get_table(table_ref)
-        resp = client.insert_rows_json(
-            json_rows=data,
-            table=table_obj,
-        )
+        if len(data) > 0:
+            resp = client.insert_rows_json(
+                json_rows=data,
+                table=table_obj,
+            )
         logger.info("Success uploaded {} rows to table {}".format(len(data), table_obj.table_id))
     except NotFound:
         logger.exception("CANT FIND TABLE BY STR!")
@@ -157,10 +158,11 @@ def insert_rows_bq(client, table_id, dataset_id, project_id, data):
 
 
 def insert_rows_bq_obj(client, table_obj, data):
-    resp = client.insert_rows_json(
-        json_rows=data,
-        table=table_obj,
-    )
+    if len(data) > 0:
+        resp = client.insert_rows_json(
+            json_rows=data,
+            table=table_obj,
+        )
     logger.info("Success uploaded {} rows to returned earlier table {}".format(len(data), table_obj.table_id))
 
 
@@ -187,24 +189,6 @@ def check_table_existance(bigquery_client, project_id, dataset_id, table_id):
         return True
     except NotFound:
         return False
-
-
-def write_data_to_table():
-    long_term_table_id = table_id + '_historical'
-    long_term_table_end_date = end_date - timedelta(short_interval_duration)
-    if not check_table_existance(bigquery_client, project_id, dataset_id, long_term_table_id):
-        # FILL UP ALL THE TABLE
-        check_or_create_dataset(bigquery_client, project_id, dataset_id)
-        delete_existing_table(bigquery_client, project_id, dataset_id, long_term_table_id)
-        table_obj = create_table(bigquery_client, project_id, dataset_id, long_term_table_id, schema_facebook_stat,
-                                 clustering_fields_facebook)
-        insights = long_read_facebook_api(app_id, app_secret, access_token, account_id, since=start_date,
-                                          until=long_term_table_end_date)
-        writable_insights = transform_insights(insights)
-        if table_obj:
-            insert_rows_bq_obj(bigquery_client, table_obj, writable_insights)
-        else:
-            insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
 
 
 def get_facebook_data(event, context):
