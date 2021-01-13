@@ -39,6 +39,7 @@ schema_facebook_stat = [
 
 clustering_fields_facebook = ['campaign_id', 'campaign_name']
 
+
 # TODO: CHECK TABLE AND CREATE VIEV
 def check_or_create_dataset(client, project_id, dataset_id):
     try:
@@ -188,6 +189,24 @@ def check_table_existance(bigquery_client, project_id, dataset_id, table_id):
         return False
 
 
+def write_data_to_table():
+    long_term_table_id = table_id + '_historical'
+    long_term_table_end_date = end_date - timedelta(short_interval_duration)
+    if not check_table_existance(bigquery_client, project_id, dataset_id, long_term_table_id):
+        # FILL UP ALL THE TABLE
+        check_or_create_dataset(bigquery_client, project_id, dataset_id)
+        delete_existing_table(bigquery_client, project_id, dataset_id, long_term_table_id)
+        table_obj = create_table(bigquery_client, project_id, dataset_id, long_term_table_id, schema_facebook_stat,
+                                 clustering_fields_facebook)
+        insights = long_read_facebook_api(app_id, app_secret, access_token, account_id, since=start_date,
+                                          until=long_term_table_end_date)
+        writable_insights = transform_insights(insights)
+        if table_obj:
+            insert_rows_bq_obj(bigquery_client, table_obj, writable_insights)
+        else:
+            insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
+
+
 def get_facebook_data(event, context):
     bigquery_client = bigquery.Client()
 
@@ -205,10 +224,19 @@ def get_facebook_data(event, context):
     account_id = event['attributes']['account_id']
 
     start_date = datetime.strptime(event['attributes']['start_date'], '%Y-%m-%d')
+    #
+    # view_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
+    # long_term_table_ref = view_ref + '_historical'
+    # short_term_table_ref = view_ref + '_{}days'.format(short_interval_duration)
+
+    if end_date > start_date:
+        temp = end_date
+        end_date = start_date
+        start_date = temp
 
     if (start_date - end_date).days > short_interval_duration:
         long_term_table_id = table_id + '_historical'
-        long_term_table_end_date = end_date-timedelta(short_interval_duration)
+        long_term_table_end_date = end_date - timedelta(short_interval_duration)
         if not check_table_existance(bigquery_client, project_id, dataset_id, long_term_table_id):
             # FILL UP ALL THE TABLE
             check_or_create_dataset(bigquery_client, project_id, dataset_id)
@@ -216,7 +244,7 @@ def get_facebook_data(event, context):
             table_obj = create_table(bigquery_client, project_id, dataset_id, long_term_table_id, schema_facebook_stat,
                                      clustering_fields_facebook)
             insights = long_read_facebook_api(app_id, app_secret, access_token, account_id, since=start_date,
-                                         until=long_term_table_end_date)
+                                              until=long_term_table_end_date)
             writable_insights = transform_insights(insights)
             if table_obj:
                 insert_rows_bq_obj(bigquery_client, table_obj, writable_insights)
@@ -224,15 +252,14 @@ def get_facebook_data(event, context):
                 insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
         else:
             # INSERT ONLY ONE DAY INSTEAD
-            last_day_date = end_date-timedelta(short_interval_duration)
-            check_or_create_dataset(bigquery_client, project_id, dataset_id)
+            last_day_date = end_date - timedelta(short_interval_duration)
             insights = read_facebook_api(app_id, app_secret, access_token, account_id, since=last_day_date,
                                          until=last_day_date)
             writable_insights = transform_insights(insights)
             insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
-        # after everything done here, we can rewrite start_date
-        start_date = end_date-timedelta(short_interval_duration)
-    short_term_table_id = table_id+'_30days'
+        # after everything done here, we can rewrite start_date so we will WRITE ONLY 30 LAST DAYS
+        start_date = end_date - timedelta(short_interval_duration)
+    short_term_table_id = table_id + '_{}days'.format(short_interval_duration)
     # Fast google BQ api operations first!!!
     check_or_create_dataset(bigquery_client, project_id, dataset_id)
     delete_existing_table(bigquery_client, project_id, dataset_id, short_term_table_id)
@@ -247,15 +274,13 @@ def get_facebook_data(event, context):
     else:
         insert_rows_bq(bigquery_client, short_term_table_id, dataset_id, project_id, writable_insights)
 
-
     # CREATING VIEW
     view_query = """
     SELECT * FROM {}
     UNION ALL
     SELECT * FROM {}
     """
-    view = bigquery.Table(table_id)
+    view = bigquery.Table("{}.{}.{}".format(project_id, dataset_id, table_id))
     view.view_query = view_query.format(long_term_table_id, short_term_table_id)
     view = bigquery_client.create_table(view)
     logger.info('view table created!')
-
