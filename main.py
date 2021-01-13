@@ -209,9 +209,9 @@ def get_facebook_data(event, context):
 
     start_date = datetime.strptime(event['attributes']['start_date'], '%Y-%m-%d')
     #
-    # view_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
-    # long_term_table_ref = view_ref + '_historical'
-    # short_term_table_ref = view_ref + '_{}days'.format(short_interval_duration)
+    view_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
+    long_term_table_ref = view_ref + '_historical'
+    short_term_table_ref = view_ref + '_{}days'.format(short_interval_duration)
 
     if end_date > start_date:
         temp = end_date
@@ -219,7 +219,7 @@ def get_facebook_data(event, context):
         start_date = temp
 
     if (start_date - end_date).days > short_interval_duration:
-        long_term_table_id = table_id + '_historical'
+        long_term_table_id = long_term_table_ref.split('.')[-1]
         long_term_table_end_date = end_date - timedelta(short_interval_duration)
         if not check_table_existance(bigquery_client, project_id, dataset_id, long_term_table_id):
             # FILL UP ALL THE TABLE
@@ -243,7 +243,7 @@ def get_facebook_data(event, context):
             insert_rows_bq(bigquery_client, long_term_table_id, dataset_id, project_id, writable_insights)
         # after everything done here, we can rewrite start_date so we will WRITE ONLY 30 LAST DAYS
         start_date = end_date - timedelta(short_interval_duration)
-    short_term_table_id = table_id + '_{}days'.format(short_interval_duration)
+    short_term_table_id = short_term_table_ref.split('.')[-1]
     # Fast google BQ api operations first!!!
     check_or_create_dataset(bigquery_client, project_id, dataset_id)
     delete_existing_table(bigquery_client, project_id, dataset_id, short_term_table_id)
@@ -264,7 +264,7 @@ def get_facebook_data(event, context):
     UNION ALL
     SELECT * FROM {}
     """
-    view = bigquery.Table("{}.{}.{}".format(project_id, dataset_id, table_id))
-    view.view_query = view_query.format(long_term_table_id, short_term_table_id)
+    view = bigquery.Table(view_ref)
+    view.view_query = view_query.format(long_term_table_ref, short_term_table_ref)
     view = bigquery_client.create_table(view)
     logger.info('view table created!')
