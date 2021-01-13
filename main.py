@@ -208,7 +208,7 @@ def get_facebook_data(event, context):
     account_id = event['attributes']['account_id']
 
     start_date = datetime.strptime(event['attributes']['start_date'], '%Y-%m-%d')
-    #
+
     view_ref = "{}.{}.{}".format(project_id, dataset_id, table_id)
     long_term_table_ref = view_ref + '_historical'
     short_term_table_ref = view_ref + '_{}days'.format(short_interval_duration)
@@ -259,12 +259,13 @@ def get_facebook_data(event, context):
         insert_rows_bq(bigquery_client, short_term_table_id, dataset_id, project_id, writable_insights)
 
     # CREATING VIEW
-    view_query = """
-    SELECT * FROM {}
-    UNION ALL
-    SELECT * FROM {}
-    """
-    view = bigquery.Table(view_ref)
-    view.view_query = view_query.format(long_term_table_ref, short_term_table_ref)
-    view = bigquery_client.create_table(view)
-    logger.info('view table created!')
+    if not check_table_existance(bigquery_client, project_id, dataset_id, table_id):
+        view_query = """
+        SELECT * FROM `{}`
+        UNION ALL
+        SELECT * FROM `{}`
+        """
+        view = bigquery.Table(view_ref)
+        view.view_query = view_query.format(long_term_table_ref, short_term_table_ref)
+        view = bigquery_client.create_table(view)
+        logger.info('view table created!')
