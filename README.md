@@ -55,7 +55,7 @@ APP_ID, APP_SECRET, APP_TOKEN = from apps developers.facebook.com
 
 START_DATE - ok
 ```bash
-gcloud beta scheduler jobs create pubsub facebook --time-zone "Europe/Kiev" --schedule "0 5 * * *" --topic facebook_run --attributes project_id=PROJECT_ID,dataset_id=DATASET_ID,table_id=TABLE_ID,account_id=ACCOUNT_ID,app_id=APP_ID,app_secret=APP_SECRET,access_token=ACCESS_TOKEN,start_date=START_DATE
+gcloud beta scheduler jobs create pubsub facebook --time-zone "Europe/Kiev" --schedule "0 5 * * *" --topic facebook_run --message-body "get_facebook" --attributes project_id=PROJECT_ID,dataset_id=DATASET_ID,table_id=TABLE_ID,account_id=ACCOUNT_ID,app_id=APP_ID,app_secret=APP_SECRET,access_token=ACCESS_TOKEN,start_date=START_DATE
 ```
 
 
