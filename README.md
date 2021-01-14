@@ -49,13 +49,13 @@ Create scheduler for facebook ads ETL:
 PROJECT_ID = your google cloud PROJECT_ID
 DATASET_ID = for example "facebook"
 TABLE_ID = for example "fb_stat"
-ACCOUNT_ID = your facebook account id without act_
 
+ACCOUNT_ID = your facebook account id without act_
 APP_ID, APP_SECRET, APP_TOKEN = from apps developers.facebook.com
 
 START_DATE - ok
 ```bash
-gcloud beta scheduler jobs create pubsub facebook --time-zone "Europe/Kiev" --schedule "0 5 * * *" --topic facebook_run --attributes project_id=PROJECT_ID,dataset_id=DATASET_ID,table_id=TABLE_ID,account_id=ACCOUNT_ID,app_id=APP_ID,app_secret=APP_SECRET,access_token=ACCESS_TOKEN,start_date=START_DATE,fill_up=True
+gcloud beta scheduler jobs create pubsub facebook --time-zone "Europe/Kiev" --schedule "0 5 * * *" --topic facebook_run --attributes project_id=PROJECT_ID,dataset_id=DATASET_ID,table_id=TABLE_ID,account_id=ACCOUNT_ID,app_id=APP_ID,app_secret=APP_SECRET,access_token=ACCESS_TOKEN,start_date=START_DATE
 ```
 
 
