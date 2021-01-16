@@ -166,7 +166,7 @@ def long_read_facebook_api(app_id, app_secret, access_token, account_id, **kwarg
     all_insights = []
     while iter_date + timedelta(short_interval_duration) < end_date:
         insights = read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
-                                     until=(iter_date + timedelta(short_interval_duration)))
+                                     until=(iter_date + timedelta(short_interval_duration-1)))
         all_insights += transform_insights(insights)
         iter_date = iter_date + timedelta(short_interval_duration)
     if iter_date < end_date:
