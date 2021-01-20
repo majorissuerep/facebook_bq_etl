@@ -2,12 +2,14 @@ from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from datetime import datetime, date, timedelta
 import logging
+import time
 
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.adobjects.adsinsights import AdsInsights
 
 short_interval_duration = 30
+read_facebook_interval = 60
 
 logger = logging.getLogger()
 
@@ -164,11 +166,12 @@ def long_read_facebook_api(app_id, app_secret, access_token, account_id, **kwarg
     end_date = kwargs['until']
 
     all_insights = []
-    while iter_date + timedelta(short_interval_duration) < end_date:
+    while iter_date + timedelta(read_facebook_interval) < end_date:
         insights = read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
-                                     until=(iter_date + timedelta(short_interval_duration-1)))
+                                     until=(iter_date + timedelta(read_facebook_interval-1)))
         all_insights += transform_insights(insights)
-        iter_date = iter_date + timedelta(short_interval_duration)
+        iter_date = iter_date + timedelta(read_facebook_interval)
+        time.sleep(10)
     if iter_date < end_date:
         all_insights += transform_insights(read_facebook_api(app_id, app_secret, access_token, account_id, since=iter_date,
                                           until=end_date))
